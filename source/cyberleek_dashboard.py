@@ -102,6 +102,7 @@ class Dashboard:
         self.state.pack(side='right')
         self.fullscreen_button = self.button(header, 'Fullscreen · F11', self.toggle_fullscreen)
         self.fullscreen_button.pack(side='right', padx=(10, 0))
+        self.button(header, 'Credits', self.open_credits).pack(side='right', padx=(10, 0))
         self.button(header, 'Appearance', self.open_appearance).pack(side='right', padx=(10, 0))
         self.button(header, 'Open downloads ↗', self.open_downloads).pack(side='right', padx=20)
         self.button(header, 'Open CyberLeek site ↗', lambda: webbrowser.open('https://wayfinder.ar.io/?q=cyberleek')).pack(side='right', padx=(10, 0))
@@ -314,6 +315,29 @@ class Dashboard:
             except OSError as exc:
                 self.log(f'[!] Color applied, but could not save preferences: {exc}')
                 messagebox.showerror('Appearance', f'Color applied, but could not save it:\n{exc}', parent=self.root)
+
+    def open_credits(self):
+        dialog = tk.Toplevel(self.root)
+        dialog.title('Cyberleek - Credits')
+        dialog.configure(bg=BG)
+        dialog.geometry('620x330')
+        dialog.minsize(520, 300)
+        dialog.transient(self.root)
+        tabs = ttk.Notebook(dialog)
+        tabs.pack(fill='both', expand=True, padx=18, pady=18)
+        credits = tk.Frame(tabs, bg=CARD)
+        tabs.add(credits, text='Credits')
+        tk.Label(credits, text='Original console script', bg=CARD, fg=ACCENT,
+                 font=('Segoe UI', 15, 'bold')).pack(anchor='w', padx=20, pady=(22, 8))
+        tk.Label(credits, text='Penistone (GitHub: wpenistone)', bg=CARD, fg=TEXT,
+                 font=('Segoe UI', 12, 'bold')).pack(anchor='w', padx=20)
+        tk.Label(credits, text='Created the original Cyberleek Python console monitor.\n'
+                 'This dashboard builds on that monitoring and asset retrieval work.',
+                 bg=CARD, fg=MUTED, justify='left', wraplength=460,
+                 font=('Segoe UI', 11)).pack(anchor='w', padx=20, pady=12)
+        tk.Button(credits, text='View original script on GitHub', bg=BG, fg=ACCENT,
+                  relief='flat', padx=14, pady=10,
+                  command=lambda: webbrowser.open('https://gist.github.com/wpenistone/22d418d7160e2ca6eb0c5f95283aae71')).pack(anchor='w', padx=20)
 
     def open_appearance(self):
         existing = getattr(self, 'appearance_dialog', None)

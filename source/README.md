@@ -55,7 +55,6 @@ retain their own licenses. The license does not grant rights to external media.
 
 ## Packaged release
 
-Double-click the executable in the parent folder; no Python installation is needed.
-The application creates a `data` folder beside the executable for settings,
-downloads, and website history. This source folder contains the application source,
-license, requirements, tests, and build instructions.
+Run the executable in the parent folder; Python is not required.
+Settings and downloads are stored in a data folder created on first launch.
+Original console script by Penistone (wpenistone); see CREDITS.md.
