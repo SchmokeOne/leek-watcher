@@ -1,0 +1,11 @@
+{
+  "mask_spoilers": false,
+  "auto_open_media": false,
+  "enable_sound": true,
+  "download_payloads": true,
+  "browser_fallback": false,
+  "download_dir": "./leaks",
+  "poll_interval_seconds": 15,
+  "custom_rpc_url": null,
+  "custom_ws_url": null
+}
