@@ -1,4 +1,5 @@
 # Cyberleek Watcher
+<img width="1919" height="1079" alt="image" src="https://github.com/user-attachments/assets/db1f16e0-4f9b-490f-a4db-068899d082a2" />
 
 **Original console script created by Penistone (GitHub: [wpenistone](https://github.com/wpenistone)).**
 This desktop dashboard builds on his original Python monitoring and asset retrieval work.
