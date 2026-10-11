@@ -14,7 +14,7 @@ import time
 import tkinter as tk
 from tkinter import ttk, filedialog, colorchooser, messagebox
 from tkinter import font as tkfont
-import cyberleek_watcher as engine
+from dashboard_adapter import engine
 
 BG = '#0c1218'
 CARD = '#141e28'
@@ -109,8 +109,10 @@ class Dashboard:
         metrics = tk.Frame(shell, bg=BG)
         metrics.grid(row=1, column=0, sticky='ew')
         self.values = {}
+        self.metric_titles = {}
+        self.metric_details = {}
         for i, (key, title, detail) in enumerate([
-            ('mcap', 'MARKET CAPITALIZATION', 'DexScreener · USD'),
+            ('mcap', 'MARKET CAPITALIZATION', 'CoinGecko · USD'),
             ('price', 'TOKEN PRICE', 'USD · DexScreener'),
             ('reserve', 'DEVELOPER RESERVE', 'Tracked token accounts'),
             ('accounts', 'DISCOVERED LINKS', 'On-chain asset entries'),
@@ -118,10 +120,12 @@ class Dashboard:
             metrics.columnconfigure(i, weight=1, uniform='metric')
             card = self.panel(metrics)
             card.grid(row=0, column=i, sticky='nsew', padx=(0 if i == 0 else 8, 0), pady=(0, 16))
-            self.label(card, title, 9).pack(anchor='w')
+            self.metric_titles[key] = self.label(card, title, 9)
+            self.metric_titles[key].pack(anchor='w')
             self.values[key] = self.label(card, '—', 27, TEXT, bold=True)
             self.values[key].pack(anchor='w', pady=(9, 4))
-            self.label(card, detail, 9).pack(anchor='w')
+            self.metric_details[key] = self.label(card, detail, 9)
+            self.metric_details[key].pack(anchor='w')
         body = tk.Frame(shell, bg=BG)
         body.grid(row=2, column=0, sticky='nsew')
         body.columnconfigure(0, weight=4, uniform='columns')
@@ -724,8 +728,8 @@ class Dashboard:
             market = dict(engine._market_data)
             totals = (len(engine._known_proposals), len(engine._known_notices), len(engine._known_ar_txs), len(engine._known_cids), len(engine._monitored_reserve_atas))
         price = market.get('price_usd', 0)
-        mcap = market.get('market_cap_usd', 0)
-        self.values['mcap'].configure(text=f'${mcap:,.0f}' if price else '—')
+        mcap = market.get('market_cap_usd') or 0
+        self.values['mcap'].configure(text=f'${mcap:,.0f}' if mcap else '—')
         self.values['price'].configure(text=f'${price:.7f}' if price else '—')
         self.values['reserve'].configure(text=engine.format_tokens(reserve) if self.ready else '—')
         self.values['accounts'].configure(text=str(count) if self.ready else '—')
@@ -775,6 +779,17 @@ class Dashboard:
         market_text = f"{'STALE · ' if stale else ''}{market.get('basis', '')} · {market.get('dex', '')} · fetched {age}s ago · every {max(5, engine._poll_interval)}s" if age is not None else 'Market data unavailable · retrying' if market.get('error') else 'Waiting for market data…'
         self.market_status.configure(text=market_text, fg='#ffad87' if stale else MUTED)
         self.values['mcap'].configure(fg='#ffad87' if stale else TEXT)
+        if not mcap:
+            self.values['mcap'].configure(text='--')
+        estimated_cap = market.get('market_cap_estimated', False)
+        self.metric_titles['mcap'].configure(text='MARKET CAP - ESTIMATE' if estimated_cap else 'MARKET CAPITALIZATION')
+        supply = market.get('circulating_supply_used')
+        supply_age = max(0, int(time.time() - market['supply_observed_at'])) if market.get('supply_observed_at') else None
+        detail = f"CG supply {supply / 1e6:.2f}M - fetched {supply_age}s ago" if supply and supply_age is not None else 'Waiting for CoinGecko supply'
+        if market.get('supply_error'):
+            detail = 'SUPPLY STALE - ' + detail
+        self.metric_details['mcap'].configure(text=detail if estimated_cap else 'CoinGecko reported - USD')
+
         self.draw_market_chart()
         self.freshness.configure(text=f'Price observed {age}s ago  ·  Last activity {engine.format_event_age()}' if age is not None else 'Waiting for first market observation')
         for var, attr, inverse, widget in self.toggles:

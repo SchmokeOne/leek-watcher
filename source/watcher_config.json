@@ -5,7 +5,7 @@
   "download_payloads": true,
   "browser_fallback": false,
   "download_dir": "./leaks",
-  "poll_interval_seconds": 15,
+  "poll_interval_seconds": 10,
   "custom_rpc_url": null,
   "custom_ws_url": null
 }
