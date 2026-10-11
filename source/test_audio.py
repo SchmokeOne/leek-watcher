@@ -1,4 +1,5 @@
 import io
+import sys
 import unittest
 import wave
 from unittest.mock import patch
@@ -24,6 +25,7 @@ class AudioTests(unittest.TestCase):
             worker.assert_called_once_with(target=engine._windows_chime_worker, args=('info', True), daemon=True)
             worker.return_value.start.assert_called_once()
 
+    @unittest.skipUnless(sys.platform == 'win32', 'winsound is Windows-only')
     def test_memory_playback_and_error_fallback(self):
         with patch.object(engine.winsound, 'PlaySound') as play, patch.object(engine, 'log_msg'):
             engine._windows_chime_worker('info', test=True)
@@ -37,6 +39,7 @@ class AudioTests(unittest.TestCase):
             self.assertTrue(any('device error' in str(call) for call in log.call_args_list))
         self.assertFalse(engine._audio_lock.locked())
 
+    @unittest.skipUnless(sys.platform == 'win32', 'winsound is Windows-only')
     def test_concurrent_test_reports_busy(self):
         engine._audio_lock.acquire()
         try:

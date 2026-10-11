@@ -14,10 +14,11 @@ class LauncherTests(unittest.TestCase):
         try:
             with tempfile.TemporaryDirectory() as folder:
                 base = Path(folder)
-                scripts = base / '.venv' / 'Scripts'
+                windows = launch.sys.platform == 'win32'
+                scripts = base / '.venv' / ('Scripts' if windows else 'bin')
                 scripts.mkdir(parents=True)
-                (scripts / 'python.exe').touch()
-                (scripts / 'pythonw.exe').touch()
+                for name in (('python.exe', 'pythonw.exe') if windows else ('python',)):
+                    (scripts / name).touch()
                 requirements = base / 'requirements.txt'
                 requirements.write_text('websockets==17.2')
                 (base / '.venv' / '.cyberleek-requirements').write_text(hashlib.sha256(requirements.read_bytes()).hexdigest())

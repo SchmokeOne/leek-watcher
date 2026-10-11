@@ -5,7 +5,7 @@
 This desktop dashboard builds on his original Python monitoring and asset retrieval work.
 [View the original console script](https://gist.github.com/wpenistone/22d418d7160e2ca6eb0c5f95283aae71).
 
-Cyberleek Watcher is a Windows dashboard for following Cyberleek market data,
+Cyberleek Watcher is a desktop dashboard for Windows and macOS for following Cyberleek market data,
 community polls, milestones, on-chain activity, website changes, and media downloads.
 
 ## Download and run
@@ -17,6 +17,28 @@ community polls, milestones, on-chain activity, website changes, and media downl
 The prebuilt application targets **64-bit Windows**. It creates a `data` folder
 beside the executable for settings, downloaded files, and website history.
 If you download the repository's source archive, extract it before running anything.
+
+## Run on macOS
+
+1. Install **Python 3.12 for macOS** from [python.org](https://www.python.org/downloads/macos/)
+   (or install [uv](https://docs.astral.sh/uv/), which downloads Python 3.12 automatically).
+2. Open the `source` folder and double-click **Start Cyberleek.command**. If macOS blocks it,
+   right-click it and choose **Open**. On first launch, it creates a local `.venv` and installs
+   the pinned runtime dependencies.
+
+Use **Control-Command-F** or the Fullscreen button to toggle fullscreen; **Esc** exits it.
+
+To build a standalone **Cyberleek Watcher.app**, open Terminal in the `source` folder and run:
+
+```bash
+python3.12 -m venv .venv
+.venv/bin/python -m pip install -r requirements-build.txt
+./build_dashboard.sh
+```
+
+The app appears at **`source/dist/Cyberleek Watcher.app`** and stores settings and downloads in
+`~/Library/Application Support/Cyberleek Watcher`. The app is unsigned, so the first launch
+needs right-click → **Open**.
 
 ## Features
 

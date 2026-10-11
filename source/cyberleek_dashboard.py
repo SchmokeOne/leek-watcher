@@ -8,6 +8,7 @@ import urllib.parse
 import webbrowser
 from pathlib import Path
 import queue
+import subprocess
 import sys
 import threading
 import time
@@ -21,6 +22,42 @@ CARD = '#141e28'
 TEXT = '#e7edf3'
 MUTED = '#8295a7'
 ACCENT = '#64dfb2'
+MAC = sys.platform == 'darwin'
+UI_FONT = 'Helvetica Neue' if MAC else 'Segoe UI'
+MONO_FONT = 'Menlo' if MAC else 'Consolas'
+FULLSCREEN_HINT = '⌃⌘F' if MAC else 'F11'
+
+
+def open_path(path):
+    """Open a file or folder with the platform's default handler."""
+    if sys.platform == 'win32':
+        os.startfile(path)
+    else:
+        subprocess.Popen(['open' if MAC else 'xdg-open', str(path)])
+
+
+class FlatButton(tk.Label):
+    """Label-based button for macOS, where Aqua ignores tk.Button colors."""
+    def __init__(self, parent, command=None, activebackground=None, activeforeground=None, **options):
+        options.pop('relief', None)
+        super().__init__(parent, **options)
+        self.command = command
+        self.colors = (options.get('bg'), options.get('fg'), activebackground, activeforeground)
+        self.bind('<Enter>', lambda event: self.hover(True))
+        self.bind('<Leave>', lambda event: self.hover(False))
+        self.bind('<ButtonRelease-1>', self.invoke)
+
+    def hover(self, active):
+        bg, fg, active_bg, active_fg = self.colors
+        if str(self.cget('state')) != 'disabled' and active_bg:
+            self.configure(bg=active_bg if active else bg, fg=(active_fg or fg) if active else fg)
+
+    def invoke(self, event=None):
+        if str(self.cget('state')) != 'disabled' and self.command:
+            self.command()
+
+
+Button = FlatButton if MAC else tk.Button
 
 
 def windows_window_api(root):
@@ -74,17 +111,19 @@ class Dashboard:
         width = min(1760, root.winfo_screenwidth() - 80)
         height = min(980, root.winfo_screenheight() - 100)
         root.geometry(f'{width}x{height}+30+30')
-        root.minsize(1280, 900)
+        root.minsize(min(1280, width), min(900, height))
         root.configure(bg=BG)
         root.protocol('WM_DELETE_WINDOW', self.close)
         root.bind('<F11>', lambda event: self.toggle_fullscreen())
+        if MAC:
+            root.bind('<Control-Command-f>', lambda event: self.toggle_fullscreen())
         root.bind('<Escape>', lambda event: self.exit_fullscreen())
         style = ttk.Style(root)
         self.style = style
         style.theme_use('clam')
         style.configure('TProgressbar', background=ACCENT, troughcolor='#23323f', borderwidth=0, lightcolor=ACCENT, darkcolor=ACCENT)
-        style.configure('Treeview', background=CARD, fieldbackground=CARD, foreground=TEXT, rowheight=29, borderwidth=0, font=('Segoe UI', 10))
-        style.configure('Treeview.Heading', background='#1d2b38', foreground=MUTED, font=('Segoe UI', 9), relief='flat')
+        style.configure('Treeview', background=CARD, fieldbackground=CARD, foreground=TEXT, rowheight=29, borderwidth=0, font=(UI_FONT, 10))
+        style.configure('Treeview.Heading', background='#1d2b38', foreground=MUTED, font=(UI_FONT, 9), relief='flat')
         style.map('Treeview', background=[('selected', '#285044')])
         shell = tk.Frame(root, bg=BG)
         self.shell = shell
@@ -100,7 +139,7 @@ class Dashboard:
         self.label(brand, 'On-chain intelligence  /  Live overview', 10).pack(anchor='w')
         self.state = self.label(header, 'PREVIEW' if offline else 'CONNECTING', 10, ACCENT, bold=True)
         self.state.pack(side='right')
-        self.fullscreen_button = self.button(header, 'Fullscreen · F11', self.toggle_fullscreen)
+        self.fullscreen_button = self.button(header, f'Fullscreen · {FULLSCREEN_HINT}', self.toggle_fullscreen)
         self.fullscreen_button.pack(side='right', padx=(10, 0))
         self.button(header, 'Credits', self.open_credits).pack(side='right', padx=(10, 0))
         self.button(header, 'Appearance', self.open_appearance).pack(side='right', padx=(10, 0))
@@ -182,7 +221,7 @@ class Dashboard:
         top.pack(fill='x', pady=(0, 10))
         self.label(top, 'ACTIVITY FEED', 10, ACCENT, bold=True).pack(side='left')
         self.button(top, 'Clear', lambda: self.feed.delete('1.0', 'end')).pack(side='right')
-        self.feed = tk.Text(activity, bg=CARD, fg=MUTED, insertbackground=TEXT, relief='flat', wrap='word', font=('Consolas', 10), height=5)
+        self.feed = tk.Text(activity, bg=CARD, fg=MUTED, insertbackground=TEXT, relief='flat', wrap='word', font=(MONO_FONT, 10), height=5)
         scroll = ttk.Scrollbar(activity, command=self.feed.yview)
         scroll.pack(side='right', fill='y')
         self.feed.configure(yscrollcommand=scroll.set)
@@ -201,7 +240,7 @@ class Dashboard:
         rate_row.pack(fill='x')
         self.label(rate_row, 'Update every', 10, TEXT).pack(side='left')
         self.rate = tk.StringVar(value=str(self.config.get('poll_interval_seconds', 15)))
-        self.rate_input = tk.Spinbox(rate_row, from_=5, to=3600, textvariable=self.rate, width=6, bg='#21313f', fg=TEXT, insertbackground=TEXT, buttonbackground='#21313f', relief='flat', font=('Segoe UI', 10))
+        self.rate_input = tk.Spinbox(rate_row, from_=5, to=3600, textvariable=self.rate, width=6, bg='#21313f', fg=TEXT, insertbackground=TEXT, buttonbackground='#21313f', relief='flat', font=(UI_FONT, 10))
         self.rate_input.pack(side='left', padx=8)
         self.rate_input.bind('<Return>', lambda event: self.apply_rate())
         self.label(rate_row, 'seconds', 9).pack(side='left')
@@ -223,7 +262,7 @@ class Dashboard:
             ('Automatically open media', '_auto_open', 'auto_open_media', False),
         ]):
             var = tk.BooleanVar(value=self.config.get(config_key, True))
-            widget = tk.Checkbutton(toggle_grid, text=label, variable=var, command=lambda a=attr, v=var, inv=inverse: self.toggle(a, v, inv), bg=CARD, fg=TEXT, selectcolor='#243745', activebackground=CARD, activeforeground=ACCENT, font=('Segoe UI', 10), anchor='w', borderwidth=0)
+            widget = tk.Checkbutton(toggle_grid, text=label, variable=var, command=lambda a=attr, v=var, inv=inverse: self.toggle(a, v, inv), bg=CARD, fg=TEXT, selectcolor='#243745', activebackground=CARD, activeforeground=ACCENT, font=(UI_FONT, 10), anchor='w', borderwidth=0)
             widget.grid(row=index // 2, column=index % 2, sticky='ew', pady=2)
             self.toggles.append((var, attr, inverse, widget))
         actions = tk.Frame(controls, bg=CARD)
@@ -256,7 +295,7 @@ class Dashboard:
         self.site_table.bind('<<TreeviewSelect>>', self.show_website_detail)
         self.site_times = self.label(websites, 'Waiting for website checks…', 9)
         self.site_times.pack(anchor='w', pady=(10, 8))
-        self.site_summary = tk.Text(websites, height=6, bg=CARD, fg=TEXT, relief='flat', wrap='word', font=('Segoe UI', 10), state='disabled')
+        self.site_summary = tk.Text(websites, height=6, bg=CARD, fg=TEXT, relief='flat', wrap='word', font=(UI_FONT, 10), state='disabled')
         self.site_summary.pack(fill='both', expand=True, pady=(0, 10))
         self.button(websites, 'Open website history ↗', self.open_website_history).pack(anchor='w')
         self.footer = self.label(shell, 'Solana mainnet  •  Arweave  •  IPFS     |     Your existing configuration is preserved', 9)
@@ -277,7 +316,7 @@ class Dashboard:
         self.update_countdown()
 
     def label(self, parent, text, size=10, color=MUTED, bold=False):
-        return tk.Label(parent, text=text, bg=parent['bg'], fg=color, font=('Segoe UI', size, 'bold' if bold else 'normal'), anchor='w')
+        return tk.Label(parent, text=text, bg=parent['bg'], fg=color, font=(UI_FONT, size, 'bold' if bold else 'normal'), anchor='w')
 
     def set_accent(self, color, persist=True):
         global ACCENT
@@ -332,14 +371,14 @@ class Dashboard:
         credits = tk.Frame(tabs, bg=CARD)
         tabs.add(credits, text='Credits')
         tk.Label(credits, text='Original console script', bg=CARD, fg=ACCENT,
-                 font=('Segoe UI', 15, 'bold')).pack(anchor='w', padx=20, pady=(22, 8))
+                 font=(UI_FONT, 15, 'bold')).pack(anchor='w', padx=20, pady=(22, 8))
         tk.Label(credits, text='Penistone (GitHub: wpenistone)', bg=CARD, fg=TEXT,
-                 font=('Segoe UI', 12, 'bold')).pack(anchor='w', padx=20)
+                 font=(UI_FONT, 12, 'bold')).pack(anchor='w', padx=20)
         tk.Label(credits, text='Created the original Cyberleek Python console monitor.\n'
                  'This dashboard builds on that monitoring and asset retrieval work.',
                  bg=CARD, fg=MUTED, justify='left', wraplength=460,
-                 font=('Segoe UI', 11)).pack(anchor='w', padx=20, pady=12)
-        tk.Button(credits, text='View original script on GitHub', bg=BG, fg=ACCENT,
+                 font=(UI_FONT, 11)).pack(anchor='w', padx=20, pady=12)
+        Button(credits, text='View original script on GitHub', bg=BG, fg=ACCENT,
                   relief='flat', padx=14, pady=10,
                   command=lambda: webbrowser.open('https://gist.github.com/wpenistone/22d418d7160e2ca6eb0c5f95283aae71')).pack(anchor='w', padx=20)
 
@@ -357,8 +396,8 @@ class Dashboard:
         dialog.geometry(f'+{self.root.winfo_rootx() + 100}+{self.root.winfo_rooty() + 100}')
         content = tk.Frame(dialog, bg=CARD, padx=22, pady=20)
         content.pack(fill='both', expand=True)
-        tk.Label(content, text='Accent color', bg=CARD, fg=TEXT, font=('Segoe UI', -20, 'bold')).pack(anchor='w')
-        tk.Label(content, text='Headings, progress bars, graph, and positive changes', bg=CARD, fg=MUTED, font=('Segoe UI', -13)).pack(anchor='w', pady=(5, 15))
+        tk.Label(content, text='Accent color', bg=CARD, fg=TEXT, font=(UI_FONT, -20, 'bold')).pack(anchor='w')
+        tk.Label(content, text='Headings, progress bars, graph, and positive changes', bg=CARD, fg=MUTED, font=(UI_FONT, -13)).pack(anchor='w', pady=(5, 15))
         value = tk.StringVar(value=ACCENT.upper())
         swatch = tk.Label(content, bg=ACCENT, width=8, height=2)
         swatch.pack(anchor='w', pady=(0, 10))
@@ -373,10 +412,10 @@ class Dashboard:
         presets = tk.Frame(content, bg=CARD)
         presets.pack(fill='x', pady=(0, 12))
         for name, color in [('Mint', '#64dfb2'), ('Blue', '#69b7ff'), ('Purple', '#b89aff'), ('Pink', '#ff8bc8'), ('Amber', '#ffc66b'), ('White', '#e7edf3')]:
-            tk.Button(presets, text=name, bg=color, fg=BG, relief='flat', padx=9, pady=7, font=('Segoe UI', -13), command=lambda c=color: apply(c)).pack(side='left', padx=(0, 6))
+            Button(presets, text=name, bg=color, fg=BG, relief='flat', padx=9, pady=7, font=(UI_FONT, -13), command=lambda c=color: apply(c)).pack(side='left', padx=(0, 6))
         row = tk.Frame(content, bg=CARD)
         row.pack(fill='x')
-        entry = tk.Entry(row, textvariable=value, width=12, bg=BG, fg=TEXT, insertbackground=TEXT, relief='flat', font=('Consolas', -15))
+        entry = tk.Entry(row, textvariable=value, width=12, bg=BG, fg=TEXT, insertbackground=TEXT, relief='flat', font=(MONO_FONT, -15))
         entry.pack(side='left', ipady=6, padx=(0, 10))
         entry.bind('<Return>', lambda event: apply(value.get().strip()))
         self.button(row, 'Apply hex', lambda: apply(value.get().strip())).pack(side='left', padx=(0, 8))
@@ -408,8 +447,8 @@ class Dashboard:
         factor = max(.72, min(1.3, self.root.winfo_width() / 1920, self.root.winfo_height() / 1080))
         for widget, family, size, weight in self.font_widgets:
             widget.configure(font=(family, -max(10, round(size * 1.3 * factor)), weight))
-        self.style.configure('Treeview', font=('Segoe UI', -round(14 * factor)), rowheight=round(28 * factor))
-        self.style.configure('Treeview.Heading', font=('Segoe UI', -round(13 * factor)))
+        self.style.configure('Treeview', font=(UI_FONT, -round(14 * factor)), rowheight=round(28 * factor))
+        self.style.configure('Treeview.Heading', font=(UI_FONT, -round(13 * factor)))
         self.style.configure('TProgressbar', thickness=max(8, round(12 * factor)))
         for tree, widths in self.tree_widths:
             available = max(210, tree.master.winfo_width() - 40)
@@ -467,7 +506,7 @@ class Dashboard:
         else:
             self.fullscreen = not self.fullscreen
             self.root.attributes('-fullscreen', self.fullscreen)
-        self.fullscreen_button.configure(text='Exit fullscreen · Esc' if self.fullscreen else 'Fullscreen · F11')
+        self.fullscreen_button.configure(text='Exit fullscreen · Esc' if self.fullscreen else f'Fullscreen · {FULLSCREEN_HINT}')
         return 'break'
 
     def exit_fullscreen(self):
@@ -481,7 +520,7 @@ class Dashboard:
         return panel
 
     def button(self, parent, title, command):
-        return tk.Button(parent, text=title, command=command, bg='#21313f', fg=TEXT, activebackground='#315447', activeforeground=TEXT, relief='flat', borderwidth=0, padx=10, pady=5, cursor='hand2', font=('Segoe UI', 9))
+        return Button(parent, text=title, command=command, bg='#21313f', fg=TEXT, activebackground='#315447', activeforeground=TEXT, relief='flat', borderwidth=0, padx=10, pady=5, cursor='hand2', font=(UI_FONT, 9))
 
     def tree(self, parent, columns, widths, height):
         tree = ttk.Treeview(parent, columns=columns, show='headings', height=height)
@@ -577,12 +616,12 @@ class Dashboard:
 
     def open_downloads(self):
         Path(engine._download_dir).mkdir(parents=True, exist_ok=True)
-        os.startfile(engine._download_dir)
+        open_path(engine._download_dir)
 
     def open_website_history(self):
         folder = Path.cwd() / 'website_history'
         folder.mkdir(parents=True, exist_ok=True)
-        os.startfile(str(folder))
+        open_path(folder)
 
     def sync_tree(self, tree, rows):
         wanted = {key for key, values in rows}
@@ -685,7 +724,7 @@ class Dashboard:
         if width < 100:
             return
         if not points:
-            chart.create_text(width / 2, height / 2, text='History builds from successful market updates', fill=MUTED, font=('Segoe UI', 9))
+            chart.create_text(width / 2, height / 2, text='History builds from successful market updates', fill=MUTED, font=(UI_FONT, 9))
             return
         left, right, top, bottom = 76, width - 12, 12, height - 24
         low, high = min(v for _, v in points), max(v for _, v in points)
@@ -695,7 +734,7 @@ class Dashboard:
         for fraction in (0, .5, 1):
             y = top + fraction * (bottom - top)
             chart.create_line(left, y, right, y, fill='#23313e')
-            chart.create_text(left - 8, y, text=engine.format_usd(high - fraction * (high - low)), anchor='e', fill=MUTED, font=('Segoe UI', 8))
+            chart.create_text(left - 8, y, text=engine.format_usd(high - fraction * (high - low)), anchor='e', fill=MUTED, font=(UI_FONT, 8))
         coords = [(left + (t - start) / (end - start) * (right - left), bottom - (v - low) / (high - low) * (bottom - top)) for t, v in points]
         # Break the line across failed/missing refreshes instead of fabricating continuity.
         cadence = max(5, engine._poll_interval)
@@ -705,7 +744,7 @@ class Dashboard:
         x, y = coords[-1]
         chart.create_oval(x - 3, y - 3, x + 3, y + 3, fill=ACCENT, outline='')
         for timestamp, position, anchor in [(start, left, 'w'), (points[-1][0], right, 'e')]:
-            chart.create_text(position, height - 8, text=dt.datetime.fromtimestamp(timestamp).strftime('%H:%M:%S'), anchor=anchor, fill=MUTED, font=('Segoe UI', 8))
+            chart.create_text(position, height - 8, text=dt.datetime.fromtimestamp(timestamp).strftime('%H:%M:%S'), anchor=anchor, fill=MUTED, font=(UI_FONT, 8))
 
     def refresh(self):
         self.refresh_operational_panels()
@@ -815,7 +854,11 @@ def main():
         except (OSError, AttributeError):
             pass
     base = Path(sys.executable).parent if getattr(sys, 'frozen', False) else Path(__file__).parent
-    if getattr(sys, 'frozen', False):
+    if getattr(sys, 'frozen', False) and MAC:
+        # The .app bundle may be read-only or translocated, so keep data in the user's Library.
+        base = Path.home() / 'Library' / 'Application Support' / 'Cyberleek Watcher'
+        base.mkdir(parents=True, exist_ok=True)
+    elif getattr(sys, 'frozen', False):
         base = base / 'data'
         base.mkdir(parents=True, exist_ok=True)
     os.chdir(base)

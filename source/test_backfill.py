@@ -8,7 +8,7 @@ import cyberleek_watcher as engine
 
 class BackfillTests(unittest.TestCase):
     def test_automatic_retrieval_never_launches_external_apps(self):
-        with tempfile.TemporaryDirectory() as folder, patch.object(engine, 'open_in_browser') as browser, patch.object(engine.os, 'startfile') as launch, patch.object(engine, 'log_msg'), patch.object(engine, '_auto_open', True), patch.object(engine, '_browser_fallback', True):
+        with tempfile.TemporaryDirectory() as folder, patch.object(engine, 'open_in_browser') as browser, patch.object(engine.os, 'startfile', create=True) as launch, patch.object(engine, 'log_msg'), patch.object(engine, '_auto_open', True), patch.object(engine, '_browser_fallback', True):
             engine.retrieve_asset({'pda': 'test', 'title': 'test', 'mirrors': [{'label': 'torrent', 'url': 'magnet:?xt=urn:btih:abc'}, {'label': 'host', 'url': 'https://gofile.io/d/abc'}]}, folder)
             browser.assert_not_called()
             launch.assert_not_called()
